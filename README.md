@@ -11,4 +11,55 @@ At that point I used the details from the aforementioned guide from Clayton Cart
 Sounds will be stored in one of three formats, or even redundantly duplicated in one of them. They'll either be an MP3 file, an Ogg Vorbis file, or an ADPCM-flavoured WAV file.
 
 ## Ripping UDI images (developed by LeapFrog)
-This is a bit of an interesting process which will require various tools. A big thank you to the folks over on the [ResHax forums](https://reshax.com/topic/588-leapfrog-udi-files/) for helping me solve this! For the actual rips, I used Luigi Auriemma's [OffZip](https://aluigi.altervista.org/mytoolz.htm) to get the image data, [PVRTexTool](https://developer.imaginationtech.com/pvrtextool/) from Imagination Technologies to export said image data into a .png and [Aseprite (paid, but free source code)](https://aseprite.org/) to wrangle the tiles into an actual image. [ImHex](https://imhex.werwolv.net) was also used to check the bytes in the .udi that set the dimensions, with two uint16 bytes at 0x00000010 and 0x00000012 to set the width and height respectively. The image is stored in RGBA4444 format in 18x18 pixel tiles, with the rightmost two columns and bottom two rows containing redundant information. Basically, you can select 16x16 pixels from the top left and tile them to create the images that are used.
+This is a bit of an interesting process which will require various tools. A big thank you to the folks over on the [ResHax forums](https://reshax.com/topic/588-leapfrog-udi-files/) for helping me solve this! For the actual rips, I used Luigi Auriemma's [OffZip](https://aluigi.altervista.org/mytoolz.htm) to get the image data, [TextureFinder](https://reshax.com/files/file/26-texturefinder/) to figure out the pixel format, [PVRTexTool](https://developer.imaginationtech.com/pvrtextool/) from Imagination Technologies to export said image data into a .png and [Aseprite (paid, but free source code)](https://aseprite.org/) to wrangle the tiles into an actual image. [ImHex](https://imhex.werwolv.net) was also used to check the bytes in the .udi that set the dimensions, with two uint16 bytes at 0x00000010 and 0x00000012 to set the width and height respectively. The image is stored in RGBA4444 format in 18x18 pixel tiles, with the rightmost two columns and bottom two rows containing redundant information. Basically, you can select 16x16 pixels from the top left and tile them to create the images that are used. Here's an example from Aseprite:
+![an image of a tiled sheet in Aseprite with the top 16x16 pixels selected out of the full 18x18 tile](aseprite.png)
+
+## Other Ocean Interactive/LeapFrog data.arc
+This one was ripped with some more [ResHax help](https://reshax.com/topic/592-leapfrog-arc-file/?do=findComment&comment=2336&_rid=1978). Special thanks to BloodRaynare who created this [QuickBMS](https://aluigi.altervista.org/quickbms.htm) script:
+```
+## My Little Pony: Friendship is Magic (LeapFrog) - data.arc extraction script by BloodRaynare
+## For use with QuickBMS
+
+comtype msf
+
+get TOC_SZ long
+get TOC_ZSZ long
+savepos TMP
+log MEMORY_FILE 0 0
+clog MEMORY_FILE TMP TOC_ZSZ TOC_SZ
+xmath BASE_OFF "TMP + TOC_ZSZ"
+
+for i = 0
+	savepos TOC_POS MEMORY_FILE
+	if TOC_POS >= TOC_SZ
+		break
+	endif
+	get NAME string MEMORY_FILE
+	get OFFSET long MEMORY_FILE
+	get SIZE long MEMORY_FILE
+	math OFFSET + BASE_OFF
+	putarray 0 i NAME OFFSET SIZE
+next i
+math FILES = i
+
+get ARC_SZ asize
+
+for i = 0 < FILES
+	getarray NAME OFFSET SIZE 0 i
+	math i + 1
+	if i == FILES
+		xmath ZSIZE "ARC_SZ - OFFSET"
+	else
+		getarray NEXT_OFFSET 1 i
+		xmath ZSIZE "NEXT_OFFSET - OFFSET"
+	endif
+	if ZSIZE == SIZE
+		log NAME OFFSET SIZE
+	else
+		clog NAME OFFSET ZSIZE SIZE
+	endif
+next
+```
+
+## Ripping Other Ocean Interactive .oot files
+The header for these files are 64 bytes long. The image itself is stored as a raw image in either RGBA4444 or RGB565 format. 
